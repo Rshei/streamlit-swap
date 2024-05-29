@@ -1,1 +1,3 @@
 .env
+firebase-config.json
+firestore-key.json
