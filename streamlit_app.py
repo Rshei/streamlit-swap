@@ -8,20 +8,37 @@ from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from a .env file
-load_dotenv()
-
-# Load Firebase configuration from environment variable
-firebase_config_path = os.getenv("FIREBASE_CONFIG")
-with open(firebase_config_path) as f:
-    firebase_config = json.load(f)
+# Firebase configuration
+firebase_config = {
+    "apiKey": st.secrets["firebase"]["apiKey"],
+    "authDomain": st.secrets["firebase"]["authDomain"],
+    "databaseURL": st.secrets["firebase"]["databaseURL"],
+    "projectId": st.secrets["firebase"]["projectId"],
+    "storageBucket": st.secrets["firebase"]["storageBucket"],
+    "messagingSenderId": st.secrets["firebase"]["messagingSenderId"],
+    "appId": st.secrets["firebase"]["appId"],
+}
 
 firebase = pyrebase.initialize_app(firebase_config)
 auth = firebase.auth()
 
-# Load Firestore key from environment variable
-firestore_key_path = os.getenv("FIRESTORE_KEY")
-db = firestore.Client.from_service_account_json(firestore_key_path)
+# Firestore configuration
+firestore_config = {
+    "type": st.secrets["firestore"]["type"],
+    "project_id": st.secrets["firestore"]["project_id"],
+    "private_key_id": st.secrets["firestore"]["private_key_id"],
+    "private_key": st.secrets["firestore"]["private_key"],
+    "client_email": st.secrets["firestore"]["client_email"],
+    "client_id": st.secrets["firestore"]["client_id"],
+    "auth_uri": st.secrets["firestore"]["auth_uri"],
+    "token_uri": st.secrets["firestore"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["firestore"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["firestore"]["client_x509_cert_url"]
+}
+
+db = firestore.Client.from_service_account_info(firestore_config)
+
+# Your Streamlit app code...
 
 # Your existing code...
 
