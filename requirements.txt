@@ -1,7 +1,8 @@
 streamlit
-google-cloud-firestore
-pyrebase
+pyrebase4
 pandas
 datetime
+google-cloud-firestore
 passlib
 python-dotenv
+pycryptodome
