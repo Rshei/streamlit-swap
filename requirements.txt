@@ -1,3 +1,7 @@
 streamlit
 google-cloud-firestore
 pyrebase
+pandas
+datetime
+passlib
+python-dotenv
