@@ -178,7 +178,7 @@ if selected == "Insert Shifts":
             'can_take_night': can_take_night,
             'can_take_rest': can_take_rest
         }
-        df = df.append(new_row, ignore_index=True)
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         save_shifts_to_firestore(df)
         st.write("Data submitted!")
 
