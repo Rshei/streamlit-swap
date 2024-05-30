@@ -109,7 +109,7 @@ else:
         logout()
 
     # Simplified mobile-friendly navigation
-    selected = st.sidebar.selectbox("Select action:", ["Insert Shifts", "Find Swap", "Shifts for swap", "Delete Shift"])     
+    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Find Swap", "Shifts for swap", "Delete Shift"])         
 
 # Function definitions for shift operations
 
