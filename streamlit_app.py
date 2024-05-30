@@ -158,23 +158,30 @@ if selected == "Insert Shifts":
     st.write("Shift Swap Submission Form")
     df = pd.DataFrame(columns=['date', 'employee_name', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest'])
     shifts = ['early', 'morning', 'evening', 'night', 'rest', None]
-    config = {
-        'date': st.selectbox('Date', options=generate_dates(2024, selected_month)),
-        'employee_name': user_full_name,
-        'give_away': st.selectbox('Give Away', options=shifts),
-        'can_take_early': st.selectbox('Can Take Early', options=['early', None]),
-        'can_take_morning': st.selectbox('Can Take Morning', options=['morning', None]),
-        'can_take_evening': st.selectbox('Can Take Evening', options=['evening', None]),
-        'can_take_night': st.selectbox('Can Take Night', options=['night', None]),
-        'can_take_rest': st.selectbox('Can Take Rest', options=['rest', None])
-    }
-    
-    df = df.append(config, ignore_index=True)
-    
+
+    date = st.selectbox('Date', options=generate_dates(2024, selected_month))
+    give_away = st.selectbox('Give Away', options=shifts)
+    can_take_early = st.selectbox('Can Take Early', options=['early', None])
+    can_take_morning = st.selectbox('Can Take Morning', options=['morning', None])
+    can_take_evening = st.selectbox('Can Take Evening', options=['evening', None])
+    can_take_night = st.selectbox('Can Take Night', options=['night', None])
+    can_take_rest = st.selectbox('Can Take Rest', options=['rest', None])
+
     if st.button("Submit"):
+        new_row = {
+            'date': date,
+            'employee_name': user_full_name,
+            'give_away': give_away,
+            'can_take_early': can_take_early,
+            'can_take_morning': can_take_morning,
+            'can_take_evening': can_take_evening,
+            'can_take_night': can_take_night,
+            'can_take_rest': can_take_rest
+        }
+        df = df.append(new_row, ignore_index=True)
         save_shifts_to_firestore(df)
         st.write("Data submitted!")
-        
+
     matches = find_matches(df)
 
 elif selected == "Find Swap":
@@ -192,7 +199,6 @@ elif selected == "Find Swap":
 
 elif selected == "Shifts for swap":
     df = fetch_shifts_from_firestore()
-    # Reorder columns
     df = df[['employee_name', 'date', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest']]
     st.write("All Assigned Shifts:")
     st.dataframe(df)
@@ -200,22 +206,14 @@ elif selected == "Shifts for swap":
 elif selected == "Delete Shift":
     employee_name = user_full_name
     df = fetch_shifts_from_firestore()
-    # Reorder columns
     df = df[['date', 'employee_name', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest']]
-    
     user_shifts = df[df['employee_name'] == employee_name]
     
     if not user_shifts.empty:
         st.write(f"Delete Shifts for {employee_name}:")
-        st.dataframe(user_shifts)  # Display user's shifts in a dataframe
-        
-        # Create a dropdown to select the shift to delete
+        st.dataframe(user_shifts)
         shift_to_delete = st.selectbox("Select the shift to delete:", user_shifts['date'])
-        
-        # Find the corresponding row in the dataframe
         row_to_delete = user_shifts[user_shifts['date'] == shift_to_delete].iloc[0]
-        
-        # Display the selected shift and the delete button
         st.write(f"Shift on {row_to_delete['date']}: {row_to_delete['give_away']}")
         if st.button(f"Delete {shift_to_delete}"):
             delete_shift_from_firestore(f"{row_to_delete['employee_name']}_{row_to_delete['date']}")
