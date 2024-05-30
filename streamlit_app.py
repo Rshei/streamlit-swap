@@ -77,7 +77,7 @@ def login():
 def logout():
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
-    st.success("Successfully logged out!")
+    st.success("Successfully logged out!, press again on Login")
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
