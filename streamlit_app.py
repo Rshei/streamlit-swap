@@ -38,9 +38,7 @@ firestore_config = {
 
 db = firestore.Client.from_service_account_info(firestore_config)
 
-# Your Streamlit app code...
-
-# Your existing code...
+# Define functions for authentication and Firestore operations
 
 def sign_up():
     email = st.text_input("Email")
@@ -64,9 +62,7 @@ def sign_up():
 def login():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    login_button = st.button("Login")
-
-    if login_button:
+    if st.button("Login"):
         try:
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
@@ -83,14 +79,14 @@ def logout():
     st.session_state['user'] = None
     st.success("Successfully logged out!")
 
+# Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
-selected = None  # Initialize selected outside of the conditional blocks
-
+# Handle user authentication
 if not st.session_state['logged_in']:
-    action = st.selectbox("Choose action", ["Login", "Sign Up"])
+    action = st.radio("Choose action", ["Login", "Sign Up"])
     if action == "Login":
         login()
     else:
@@ -110,8 +106,10 @@ else:
     if st.sidebar.button("Logout"):
         logout()
 
-    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Find Swap", "Shifts for swap", "Delete Shift"])     
-     
+    # Simplified mobile-friendly navigation
+    selected = st.sidebar.selectbox("Select action:", ["Insert Shifts", "Find Swap", "Shifts for swap", "Delete Shift"])     
+
+# Function definitions for shift operations
 
 def generate_dates(year, month):
     start_date = datetime(year, month, 1)
@@ -152,50 +150,48 @@ def update_shift_in_firestore(old_doc_id, new_data):
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
+# Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
     st.write("Shift Swap Submission Form")
     df = pd.DataFrame(columns=['date', 'employee_name', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest'])
     shifts = ['early', 'morning', 'evening', 'night', 'rest', None]
     config = {
-        'date': st.column_config.SelectboxColumn('date', width='small', options=generate_dates(2024, selected_month)),
-        'employee_name': st.column_config.SelectboxColumn('Employee name', options=[user_full_name]),
-        'give_away': st.column_config.SelectboxColumn('Give Away', options=shifts),
-        'can_take_early': st.column_config.SelectboxColumn('Can Take Early', options=['early', None]),
-        'can_take_morning': st.column_config.SelectboxColumn('Can Take Morning', options=['morning', None]),
-        'can_take_evening': st.column_config.SelectboxColumn('Can Take Evening', options=['evening', None]),
-        'can_take_night': st.column_config.SelectboxColumn('Can Take Night', options=['night', None]),
-        'can_take_rest': st.column_config.SelectboxColumn('Can Take Rest', options=['rest', None])
+        'date': st.selectbox('Date', options=generate_dates(2024, selected_month)),
+        'employee_name': user_full_name,
+        'give_away': st.selectbox('Give Away', options=shifts),
+        'can_take_early': st.selectbox('Can Take Early', options=['early', None]),
+        'can_take_morning': st.selectbox('Can Take Morning', options=['morning', None]),
+        'can_take_evening': st.selectbox('Can Take Evening', options=['evening', None]),
+        'can_take_night': st.selectbox('Can Take Night', options=['night', None]),
+        'can_take_rest': st.selectbox('Can Take Rest', options=['rest', None])
     }
-
-    result = st.data_editor(df, column_config=config, num_rows='dynamic', hide_index=True)
+    
+    df = df.append(config, ignore_index=True)
     
     if st.button("Submit"):
-        save_shifts_to_firestore(result)
+        save_shifts_to_firestore(df)
         st.write("Data submitted!")
         
-    matches = find_matches(result)
+    matches = find_matches(df)
 
 elif selected == "Find Swap":
     employee_name = user_full_name
     df = fetch_shifts_from_firestore()
     matches = find_matches(df)
     if matches:
-        st.write("Shift swapping matches for", employee_name + ":")
+        st.write(f"Shift swapping matches for {employee_name}:")
         for match in matches:
             if match[0] == employee_name or match[1] == employee_name:
                 st.write(f"{match[0]} and {match[1]} on {match[2]} can swap shifts.")
                 st.write(f"{match[0]} gives away {match[3]} and {match[1]} gives away {match[4]}")
     else:
-        st.write("No matches found for", employee_name)
+        st.write(f"No matches found for {employee_name}.")
 
 elif selected == "Shifts for swap":
     df = fetch_shifts_from_firestore()
-
     # Reorder columns
     df = df[['employee_name', 'date', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest']]
-    
-    # Display all shifts in a table
     st.write("All Assigned Shifts:")
     st.dataframe(df)
 
@@ -217,12 +213,9 @@ elif selected == "Delete Shift":
         # Find the corresponding row in the dataframe
         row_to_delete = user_shifts[user_shifts['date'] == shift_to_delete].iloc[0]
         
-        # Create a unique key for the delete button
-        delete_button_key = f"delete_{row_to_delete['date']}"
-        
         # Display the selected shift and the delete button
         st.write(f"Shift on {row_to_delete['date']}: {row_to_delete['give_away']}")
-        if st.button(f"Delete {shift_to_delete}", key=delete_button_key):
+        if st.button(f"Delete {shift_to_delete}"):
             delete_shift_from_firestore(f"{row_to_delete['employee_name']}_{row_to_delete['date']}")
             st.write("Shift deleted.")
     else:
