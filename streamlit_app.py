@@ -161,11 +161,11 @@ if selected == "Insert Shifts":
 
     date = st.selectbox('Date', options=generate_dates(2024, selected_month))
     give_away = st.selectbox('Give Away', options=shifts)
-    can_take_early = st.selectbox('Can Take Early', options=['early', None])
-    can_take_morning = st.selectbox('Can Take Morning', options=['morning', None])
-    can_take_evening = st.selectbox('Can Take Evening', options=['evening', None])
-    can_take_night = st.selectbox('Can Take Night', options=['night', None])
-    can_take_rest = st.selectbox('Can Take Rest', options=['rest', None])
+    can_take_early = st.selectbox('Can Take Early', options=[None, 'early'])
+    can_take_morning = st.selectbox('Can Take Morning', options=[None, 'morning'])
+    can_take_evening = st.selectbox('Can Take Evening', options=[None, 'evening'])
+    can_take_night = st.selectbox('Can Take Night', options=[None,'night'])
+    can_take_rest = st.selectbox('Can Take Rest', options=[None,'rest'])
 
     if st.button("Submit"):
         new_row = {
@@ -192,8 +192,11 @@ elif selected == "Find Swap":
         st.write(f"Shift swapping matches for {employee_name}:")
         for match in matches:
             if match[0] == employee_name or match[1] == employee_name:
-                st.write(f"{match[0]} and {match[1]} on {match[2]} can swap shifts.")
-                st.write(f"{match[0]} gives away {match[3]} and {match[1]} gives away {match[4]}")
+                match_with = match[1] if match[0] == employee_name else match[0]
+                st.write(f"On {match[2]}, you have a match with {match_with}.")
+    else:
+        st.write(f"No matches found for {employee_name}.")
+
     else:
         st.write(f"No matches found for {employee_name}.")
 
