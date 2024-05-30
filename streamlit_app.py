@@ -197,9 +197,6 @@ elif selected == "Find Swap":
     else:
         st.write(f"No matches found for {employee_name}.")
 
-    else:
-        st.write(f"No matches found for {employee_name}.")
-
 elif selected == "Shifts for swap":
     df = fetch_shifts_from_firestore()
     df = df[['employee_name', 'date', 'give_away', 'can_take_early', 'can_take_morning', 'can_take_evening', 'can_take_night', 'can_take_rest']]
