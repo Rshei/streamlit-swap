@@ -67,7 +67,7 @@ def login():
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
-            st.success("Successfully logged in!")
+            st.success("Successfully logged in!,press again on Login")
         except Exception as e:
             if "EMAIL_NOT_FOUND" in str(e) or "INVALID_PASSWORD" in str(e):
                 st.error("Wrong email or password.")
@@ -77,7 +77,7 @@ def login():
 def logout():
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
-    st.success("Successfully logged out!, press again on Login")
+    st.success("Successfully logged out!")
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
