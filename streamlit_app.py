@@ -54,7 +54,7 @@ def sign_up():
                 "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
             }
             db.collection('users').document(user['localId']).set(user_data)
-            st.success("Successfully signed up!")
+            st.success("Successfully signed up!,press again on Sign Up")
             return user
         except Exception as e:
             st.error(f"Sign-up failed: {e}")        
