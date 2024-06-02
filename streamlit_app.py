@@ -41,9 +41,9 @@ db = firestore.Client.from_service_account_info(firestore_config)
 # Define functions for authentication and Firestore operations
 
 def sign_up():
+    full_name = st.text_input("Full Name")
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    full_name = st.text_input("Full Name")
     if st.button("Sign Up"):
         try:
             auth.create_user_with_email_and_password(email, password)
