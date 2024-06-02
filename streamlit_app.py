@@ -57,7 +57,7 @@ def sign_up():
                     "full_name": full_name,
                     "password_hash": pbkdf2_sha256.hash(password)
                 }
-                print("User Data:", user_data)  # Add this line to check the user data
+                st.write("User Data:", user_data)  # Add this line to check the user data
                 db.collection('users').document(user['localId']).set(user_data)
                 st.success("Successfully signed up! Press again on Sign Up")
                 return user
