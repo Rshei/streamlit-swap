@@ -45,19 +45,22 @@ def sign_up():
     password = st.text_input("Password", type="password")
     full_name = st.text_input("Full Name")
     if st.button("Sign Up"):
-        try:
-            auth.create_user_with_email_and_password(email, password)
-            user = auth.sign_in_with_email_and_password(email, password)
-            user_data = {
-                "email": email,
-                "full_name": full_name,
-                "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
-            }
-            db.collection('users').document(user['localId']).set(user_data)
-            st.success("Successfully signed up!")
-            return user
-        except Exception as e:
-            st.error(f"Sign-up failed: {e}")        
+        if not email or not password or not full_name:
+            st.error("Please fill in all fields.")
+        else:
+            try:
+                auth.create_user_with_email_and_password(email, password)
+                user = auth.sign_in_with_email_and_password(email, password)
+                user_data = {
+                    "email": email,
+                    "full_name": full_name,
+                    "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
+                }
+                db.collection('users').document(user['localId']).set(user_data)
+                st.success("Successfully signed up!  Press again on Sign Up")
+                return user
+            except Exception as e:
+                st.error(f"Sign-up failed: {e}")        
 
 def login():
     email = st.text_input("Email")
@@ -67,7 +70,7 @@ def login():
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
-            st.success("Successfully logged in!")
+            st.success("Successfully logged in!  Press again on login")
         except Exception as e:
             if "EMAIL_NOT_FOUND" in str(e) or "INVALID_PASSWORD" in str(e):
                 st.error("Wrong email or password.")
@@ -109,7 +112,7 @@ else:
         logout()
 
     # Simplified mobile-friendly navigation
-    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Find Swap", "Shifts for swap", "Delete Shift"])         
+    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Matches", "Shifts for swap", "Delete Shift"])         
 
 # Function definitions for shift operations
 
@@ -184,18 +187,19 @@ if selected == "Insert Shifts":
 
     matches = find_matches(df)
 
-elif selected == "Find Swap":
+elif selected == "Matches":
     employee_name = user_full_name
     df = fetch_shifts_from_firestore()
     matches = find_matches(df)
     if matches:
-        st.write(f"Shift swapping matches for {employee_name}:")
+        st.write(f"Matches for {employee_name}:")
         for match in matches:
             if match[0] == employee_name or match[1] == employee_name:
                 match_with = match[1] if match[0] == employee_name else match[0]
-                st.write(f"On {match[2]}, you have a match with {match_with}.")
+                st.write(f"On {match[2]}, you have a match with {match_with}. {match_with} wants to give away {match[4]} for your {match[3]}.")
     else:
         st.write(f"No matches found for {employee_name}.")
+
 
 elif selected == "Shifts for swap":
     df = fetch_shifts_from_firestore()
