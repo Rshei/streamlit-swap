@@ -84,6 +84,8 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
+selected = None  # Initialize selected outside of the conditional blocks
+
 # Handle user authentication
 if not st.session_state['logged_in']:
     action = st.radio("Choose action", ["Login", "Sign Up"])
