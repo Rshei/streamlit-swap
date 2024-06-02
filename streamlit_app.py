@@ -44,20 +44,25 @@ def sign_up():
     full_name = st.text_input("Full Name")
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
+    
     if st.button("Sign Up"):
-        try:
-            auth.create_user_with_email_and_password(email, password)
-            user = auth.sign_in_with_email_and_password(email, password)
-            user_data = {
-                "email": email,
-                "full_name": full_name,
-                "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
-            }
-            db.collection('users').document(user['localId']).set(user_data)
-            st.success("Successfully signed up!,press again on Sign Up")
-            return user
-        except Exception as e:
-            st.error(f"Sign-up failed: {e}")        
+        if st.button("Sign Up"):
+        if not full_name or not email or not password:  # New line
+            st.error("All fields are required.")  # New line
+        else:  # New line
+            try:
+                auth.create_user_with_email_and_password(email, password)
+                user = auth.sign_in_with_email_and_password(email, password)
+                user_data = {
+                    "email": email,
+                    "full_name": full_name,
+                    "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
+                }
+                db.collection('users').document(user['localId']).set(user_data)
+                st.success("Successfully signed up!,press again on Sign Up")
+                return user
+            except Exception as e:
+                st.error(f"Sign-up failed: {e}")        
 
 def login():
     email = st.text_input("Email")
