@@ -41,39 +41,35 @@ db = firestore.Client.from_service_account_info(firestore_config)
 # Define functions for authentication and Firestore operations
 
 def sign_up():
-    full_name = st.text_input("Full Name")
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    
+    full_name = st.text_input("Full Name")
     if st.button("Sign Up"):
-        if not full_name or not email or not password:
-            st.error("All fields are required.")
-        else:
-            try:
-                auth.create_user_with_email_and_password(email, password)
-                user = auth.sign_in_with_email_and_password(email, password)
-                user_data = {
-                    "email": email,
-                    "full_name": full_name,
-                    "password_hash": pbkdf2_sha256.hash(password)
-                }
-                db.collection('users').document(user['localId']).set(user_data)
-                st.success("Successfully signed up! Press again on Sign Up")
-                return user, full_name  # Return both user object and full name
-            except Exception as e:
-                st.error(f"Sign-up failed: {e}")
-
-        
+        try:
+            auth.create_user_with_email_and_password(email, password)
+            user = auth.sign_in_with_email_and_password(email, password)
+            user_data = {
+                "email": email,
+                "full_name": full_name,
+                "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
+            }
+            db.collection('users').document(user['localId']).set(user_data)
+            st.success("Successfully signed up!")
+            return user
+        except Exception as e:
+            st.error(f"Sign-up failed: {e}")        
 
 def login():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    if st.button("Login"):
+    login_button = st.button("Login")
+
+    if login_button:
         try:
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
-            st.success("Successfully logged in!,press again on Login")
+            st.success("Successfully logged in!")
         except Exception as e:
             if "EMAIL_NOT_FOUND" in str(e) or "INVALID_PASSWORD" in str(e):
                 st.error("Wrong email or password.")
@@ -85,28 +81,21 @@ def logout():
     st.session_state['user'] = None
     st.success("Successfully logged out!")
 
-# Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
 selected = None  # Initialize selected outside of the conditional blocks
 
-# Handle user authentication
 if not st.session_state['logged_in']:
-    action = st.radio("Choose action", ["Login", "Sign Up"])
+    action = st.selectbox("Choose action", ["Login", "Sign Up"])
     if action == "Login":
         login()
     else:
-        user, user_full_name = sign_up()  # Retrieve full name from sign-up function
+        user = sign_up()
         if user:
-            user_doc = db.collection('users').document(user['localId']).get()
-            user_data = user_doc.to_dict()
-            user_full_name = user_data.get("full_name", "Unknown")
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
-
-
 else:
     user_email = st.session_state['user']['email']
     user_doc = db.collection('users').where("email", "==", user_email).get()
