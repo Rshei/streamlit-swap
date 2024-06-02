@@ -57,7 +57,6 @@ def sign_up():
                     "full_name": full_name,
                     "password_hash": pbkdf2_sha256.hash(password)
                 }
-                st.write("User Data:", user_data)  # Add this line to check the user data
                 db.collection('users').document(user['localId']).set(user_data)
                 st.success("Successfully signed up! Press again on Sign Up")
                 return user
@@ -103,7 +102,6 @@ if not st.session_state['logged_in']:
         if user:
             user_doc = db.collection('users').document(user['localId']).get()
             user_data = user_doc.to_dict()
-            st.write("Retrieved User Data:", user_data)  # Add this line to check the retrieved user data
             user_full_name = user_data.get("full_name", "Unknown")
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
