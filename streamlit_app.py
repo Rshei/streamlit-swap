@@ -101,8 +101,13 @@ if not st.session_state['logged_in']:
     else:
         user = sign_up()
         if user:
+            user_doc = db.collection('users').document(user['localId']).get()
+            user_data = user_doc.to_dict()
+            st.write("Retrieved User Data:", user_data)  # Add this line to check the retrieved user data
+            user_full_name = user_data.get("full_name", "Unknown")
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
+
 else:
     user_email = st.session_state['user']['email']
     user_doc = db.collection('users').where("email", "==", user_email).get()
