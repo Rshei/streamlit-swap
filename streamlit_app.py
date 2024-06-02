@@ -101,7 +101,7 @@ else:
     user_doc = db.collection('users').where("email", "==", user_email).get()
     if len(user_doc) == 1:
         user_data = user_doc[0].to_dict()
-        user_full_name = user_data.get("full_name", "Unknown")
+        user_full_name = user_data.get("full_name")
     else:
         user_full_name = "Unknown"
     st.sidebar.write(f"Logged in as: {user_full_name} ({user_email})")
