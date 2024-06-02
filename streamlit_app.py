@@ -62,9 +62,7 @@ def sign_up():
 def login():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    login_button = st.button("Login")
-
-    if login_button:
+    if st.button("Login"):
         try:
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
@@ -81,14 +79,14 @@ def logout():
     st.session_state['user'] = None
     st.success("Successfully logged out!")
 
+# Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
-selected = None  # Initialize selected outside of the conditional blocks
-
+# Handle user authentication
 if not st.session_state['logged_in']:
-    action = st.selectbox("Choose action", ["Login", "Sign Up"])
+    action = st.radio("Choose action", ["Login", "Sign Up"])
     if action == "Login":
         login()
     else:
@@ -101,7 +99,7 @@ else:
     user_doc = db.collection('users').where("email", "==", user_email).get()
     if len(user_doc) == 1:
         user_data = user_doc[0].to_dict()
-        user_full_name = user_data.get("full_name")
+        user_full_name = user_data.get("full_name", "Unknown")
     else:
         user_full_name = "Unknown"
     st.sidebar.write(f"Logged in as: {user_full_name} ({user_email})")
