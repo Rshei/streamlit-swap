@@ -57,7 +57,8 @@ def sign_up():
                     "password_hash": pbkdf2_sha256.hash(password)  # Hash the password
                 }
                 db.collection('users').document(user['localId']).set(user_data)
-                st.success("Successfully signed up!  Press again on Sign Up")
+                st.success("Successfully signed up!")  
+                st.success("Press again on Sign Up")
                 return user
             except Exception as e:
                 st.error(f"Sign-up failed: {e}")        
@@ -70,7 +71,8 @@ def login():
             user = auth.sign_in_with_email_and_password(email, password)
             st.session_state['logged_in'] = True
             st.session_state['user'] = user
-            st.success("Successfully logged in!  Press again on login")
+            st.success("Successfully logged in!")
+            st.success("Press again on Login!")
         except Exception as e:
             if "EMAIL_NOT_FOUND" in str(e) or "INVALID_PASSWORD" in str(e):
                 st.error("Wrong email or password.")
@@ -196,7 +198,8 @@ elif selected == "Matches":
         for match in matches:
             if match[0] == employee_name or match[1] == employee_name:
                 match_with = match[1] if match[0] == employee_name else match[0]
-                st.write(f"On {match[2]}, you have a match with {match_with}. {match_with} wants to give away {match[4]} for your {match[3]}.")
+                st.write(f"On {match[2]}, you have a match with {match_with}")
+                st.write(f"{match_with} wants to give away {match[4]} for your {match[3]}.")
     else:
         st.write(f"No matches found for {employee_name}.")
 
