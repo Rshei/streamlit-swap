@@ -46,7 +46,6 @@ def sign_up():
     password = st.text_input("Password", type="password")
     
     if st.button("Sign Up"):
-        if st.button("Sign Up"):
         if not full_name or not email or not password:  # New line
             st.error("All fields are required.")  # New line
         else:  # New line
