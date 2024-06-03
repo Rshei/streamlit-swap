@@ -89,6 +89,28 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
+# Apply custom CSS styles
+st.markdown("""
+    <style>
+        .main {
+            background-color: #f0f2f6;
+            color: #333333;
+        }
+        .stButton button {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+        }
+        .stTextInput > div > div > input {
+            border-radius: 5px;
+        }
+        .stSidebar .stRadio > label {
+            color: #333333;
+            font-weight: bold;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 selected = None  # Initialize selected outside of the conditional blocks
 
 # Handle user authentication
