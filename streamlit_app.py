@@ -89,24 +89,23 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user'] = None
 
-# Apply custom CSS styles
 st.markdown("""
     <style>
         .main {
-            background-color: #f0f2f6;
-            color: #333333;
+            background-color: #f0f2f6 !important;
+            color: #333333 !important;
         }
         .stButton button {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 5px;
+            background-color: #4CAF50 !important;
+            color: white !important;
+            border-radius: 5px !important;
         }
         .stTextInput > div > div > input {
-            border-radius: 5px;
+            border-radius: 5px !important;
         }
         .stSidebar .stRadio > label {
-            color: #333333;
-            font-weight: bold;
+            color: #333333 !important;
+            font-weight: bold !important;
         }
     </style>
 """, unsafe_allow_html=True)
