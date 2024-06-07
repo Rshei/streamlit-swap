@@ -206,7 +206,6 @@ def generate_ics(shifts):
     ics_content += "END:VCALENDAR\n"
     return ics_content
 
-
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
