@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import pdfplumber
 from icalendar import Calendar, Event
 import PyPDF2
-import io
+
 
 # Firebase configuration
 firebase_config = {
