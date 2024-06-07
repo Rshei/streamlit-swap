@@ -291,8 +291,7 @@ elif selected == "shifts to calendar":
         ics_content = create_ics(events)
         
         st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
-
-    
+        
 
 
 
