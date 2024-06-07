@@ -186,12 +186,17 @@ def create_shift_event(date, shift):
 
 def create_ics(events):
     cal = Calendar()
+    cal.add('version', '2.0')
+    cal.add('prodid', '-//Your Company//Your Product//EN')
+
     for event in events:
         ical_event = Event()
         ical_event.add('summary', event['summary'])
         ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
         ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
         ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%S')}@yourdomain.com")
+        ical_event.add('priority', 5)
         cal.add_component(ical_event)
     return cal.to_ical()
 
