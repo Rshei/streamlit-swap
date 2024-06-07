@@ -287,7 +287,7 @@ elif selected == "Delete Shift":
 
 
 
-'''elif selected == "shifts to calendar":
+"""elif selected == "shifts to calendar":
     uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
     if uploaded_file is not None:
         shifts = extract_shifts_from_pdf(uploaded_file)
@@ -311,4 +311,4 @@ elif selected == "Delete Shift":
         st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
         
         # Provide .ics file for download
-        # st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")'''
+        # st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
