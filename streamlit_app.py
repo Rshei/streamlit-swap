@@ -279,6 +279,7 @@ elif selected == "shifts to calendar":
 
     if uploaded_file is not None:
         shifts = extract_shifts_from_pdf(uploaded_file)
+        st.write("Extracted Shifts:", shifts)  # Debug statement
     
         # Process shifts
         events = []
@@ -290,11 +291,13 @@ elif selected == "shifts to calendar":
                     'dtstart': start,
                     'dtend': end
                 })
+        
+        st.write("Processed Events:", events)  # Debug statement
     
         # Create .ics content
         ics_content = create_ics(events)
+        st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
         
         # Provide .ics file for download
         st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
-
 
