@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import pdfplumber
 from icalendar import Calendar, Event
 import PyPDF2
+import re
 
 
 # Firebase configuration
@@ -173,13 +174,14 @@ def extract_shifts_from_pdf(pdf_file):
     
     # Extract shifts
     shifts = []
-    # Add space after each date for easier splitting
-    text = re.sub(r"(\d{2})", r"\1 ", text)
+    # Add space before each date for easier splitting
+    text = re.sub(r'(\d{2})(\d{2}:\d{2} - \d{2}:\d{2})', r'\1 \2', text)
     lines = text.split('\n')
     for line in lines:
-        matches = re.findall(r'(\d{2} \d{2}:\d{2} - \d{2}:\d{2} .*?) (?=\d{2}|Rest|COMP0|$)', line)
+        # Find all shift patterns
+        matches = re.findall(r'(\d{2}) (\d{2}:\d{2} - \d{2}:\d{2} .*?)(?=\d{2}|Rest|COMP0|$)', line)
         for match in matches:
-            date, shift = match.split(' ', 1)
+            date, shift = match[0], match[1]
             shifts.append((date, shift.strip()))
         if "Rest" in line or "COMP0" in line:
             date = re.search(r'(\d{2})', line).group(1)
