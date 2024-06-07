@@ -9,4 +9,4 @@ pycryptodome
 pdfplumber
 icalendar
 PyPDF2
-
+uuid
