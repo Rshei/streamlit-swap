@@ -292,7 +292,3 @@ elif selected == "shifts to calendar":
             mime="text/calendar"
         )
 
-
-
-
-
