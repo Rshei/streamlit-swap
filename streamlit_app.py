@@ -7,7 +7,7 @@ from google.cloud import firestore
 from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
-import fitz
+
 
 # Firebase configuration
 firebase_config = {
