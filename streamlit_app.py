@@ -189,6 +189,9 @@ def create_shift_event(date, shift):
 
 def create_ics(events):
     cal = Calendar()
+    cal.add('prodid', '-//Your Organization//Your Product//EN')
+    cal.add('version', '2.0')
+
     for event in events:
         ical_event = Event()
         ical_event.add('summary', event['summary'])
@@ -197,7 +200,7 @@ def create_ics(events):
         ical_event.add('dtstamp', datetime.utcnow())
         ical_event.add('uid', str(uuid.uuid4()))
         ical_event.add('created', datetime.utcnow())
-        ical_event.add('description', event.get('description', ''))
+        ical_event.add('description', event.get('description', 'Work shift'))
         ical_event.add('last-modified', datetime.utcnow())
         ical_event.add('location', event.get('location', ''))
         ical_event.add('sequence', 0)
@@ -282,24 +285,27 @@ elif selected == "shifts to calendar":
     uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
 
     if uploaded_file is not None:
-        shifts = extract_shifts_from_pdf(uploaded_file)
-    
-        # Process shifts
-        events = []
-        for shift_date, shift_time in shifts:
-            start, end = create_shift_event(shift_date, shift_time)
-            if start and end:
-                events.append({
-                    'summary': 'Work Shift',
-                    'dtstart': start,
-                    'dtend': end
-                })
-    
+    shifts = extract_shifts_from_pdf(uploaded_file)
+
+    # Process shifts
+    events = []
+    for shift_date, shift_time in shifts:
+        start, end = create_shift_event(shift_date, shift_time)
+        if start and end:
+            events.append({
+                'summary': 'Work Shift',
+                'dtstart': start,
+                'dtend': end
+            })
+
+    if events:
         # Create .ics content
         ics_content = create_ics(events)
         
         # Provide .ics file for download
         st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
+    else:
+        st.error("No valid shifts found in the uploaded PDF.")
 
 
 
