@@ -203,7 +203,8 @@ def generate_ics(shifts):
                 ics_content += "SUMMARY:Work Shift\n"
                 ics_content += "END:VEVENT\n"
     
-    ics
+    ics_content += "END:VCALENDAR\n"
+    return ics_content
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
