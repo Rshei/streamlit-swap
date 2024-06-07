@@ -9,3 +9,4 @@ pycryptodome
 pdfplumber
 icalendar
 PyPDF2
+io
