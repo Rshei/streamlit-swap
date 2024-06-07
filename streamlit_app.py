@@ -206,6 +206,7 @@ def generate_ics(shifts):
     ics_content += "END:VCALENDAR\n"
     return ics_content
 
+
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
@@ -278,7 +279,6 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    # File uploader for PDF shift file
     uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
     if uploaded_file is not None:
         text = parse_pdf(uploaded_file)
@@ -292,7 +292,6 @@ elif selected == "shifts to calendar":
             file_name="shifts.ics",
             mime="text/calendar"
         )
-    
 
 
 
