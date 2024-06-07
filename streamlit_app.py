@@ -7,7 +7,7 @@ from google.cloud import firestore
 from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
-import fitz
+import PyPDF2
 
 
 # Firebase configuration
@@ -167,19 +167,32 @@ def parse_pdf(pdf):
         text += page.get_text()
     return text
 
-# Define the function to extract shifts from the parsed text
+# Function to parse the PDF and extract shifts
+def parse_pdf(pdf):
+    reader = PyPDF2.PdfFileReader(pdf)
+    text = ""
+    for page_num in range(reader.getNumPages()):
+        text += reader.getPage(page_num).extract_text()
+    return text
+
+# Function to extract shifts from the parsed text
 def extract_shifts(text):
     shifts = []
     lines = text.splitlines()
     for line in lines:
         if "Rest" in line or " - " in line:
-            date_str = line.split()[0]
-            time_range = line.split()[1] if "Rest" not in line else "Rest"
-            date = datetime.datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
-            shifts.append({"date": date, "time": time_range})
+            parts = line.split()
+            if len(parts) >= 2:
+                date_str = parts[0]
+                time_range = parts[1] if "Rest" not in parts else "Rest"
+                try:
+                    date = datetime.datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
+                    shifts.append({"date": date, "time": time_range})
+                except ValueError:
+                    continue
     return shifts
 
-# Define the function to generate the ICS content
+# Function to generate the ICS content
 def generate_ics(shifts):
     ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Your Organization//NONSGML v1.0//EN\n"
     
@@ -276,19 +289,14 @@ elif selected == "shifts to calendar":
         text = parse_pdf(uploaded_file)
         shifts = extract_shifts(text)
         ics_content = generate_ics(shifts)
-        ics_file_path = "shifts.ics"
-        
-        with open(ics_file_path, "w") as f:
-            f.write(ics_content)
         
         st.success("ICS file has been generated!")
-        with open(ics_file_path, "rb") as file:
-            btn = st.download_button(
-                label="Download ICS file",
-                data=file,
-                file_name="shifts.ics",
-                mime="text/calendar"
-            )
+        st.download_button(
+            label="Download ICS file",
+            data=ics_content,
+            file_name="shifts.ics",
+            mime="text/calendar"
+        )
     
 
 
