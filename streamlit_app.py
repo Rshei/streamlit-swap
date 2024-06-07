@@ -171,17 +171,40 @@ def parse_pdf(pdf):
 def extract_shifts(text):
     shifts = []
     lines = text.splitlines()
+    current_month_year = None
     for line in lines:
-        if "Rest" in line or " - " in line:
+        if "From" in line and "to" in line:
             parts = line.split()
-            if len(parts) >= 2:
-                date_str = parts[0]
-                time_range = parts[1] if "Rest" not in parts else "Rest"
-                try:
-                    date = datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
-                    shifts.append({"date": date, "time": time_range})
-                except ValueError:
-                    continue
+            for i, part in enumerate(parts):
+                if '/' in part:
+                    try:
+                        current_month_year = datetime.strptime(part, "%d/%m/%Y").strftime("%m/%Y")
+                        break
+                    except ValueError:
+                        continue
+        elif any(day in line for day in ["M ", "T ", "W ", "T ", "F ", "S ", "S "]):
+            parts = line.split(maxsplit=2)
+            if len(parts) >= 3:
+                day_abbr = parts[0]
+                date_str = parts[1]
+                time_str = parts[2]
+                if current_month_year:
+                    try:
+                        full_date_str = f"{date_str}/{current_month_year}"
+                        date = datetime.strptime(full_date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
+                        times = time_str.split(", ")
+                        for time in times:
+                            if "Rest" not in time:
+                                time_range = time.split(" - ")
+                                if len(time_range) == 2:
+                                    start_time, end_time = time_range
+                                    shifts.append({
+                                        "date": date,
+                                        "start_time": start_time,
+                                        "end_time": end_time
+                                    })
+                    except ValueError:
+                        continue
     return shifts
 
 # Function to generate the ICS content
@@ -189,23 +212,17 @@ def generate_ics(shifts):
     ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Your Organization//NONSGML v1.0//EN\n"
     
     for shift in shifts:
-        if shift["time"] != "Rest":
-            date = shift["date"]
-            time_range = shift["time"].split(" - ")
-            if len(time_range) == 2:
-                start_time, end_time = time_range
-                start_datetime = datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
-                end_datetime = datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
-
-                ics_content += "BEGIN:VEVENT\n"
-                ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-                ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-                ics_content += "SUMMARY:Work Shift\n"
-                ics_content += "END:VEVENT\n"
+        start_datetime = datetime.strptime(f"{shift['date']} {shift['start_time']}", "%Y-%m-%d %H:%M")
+        end_datetime = datetime.strptime(f"{shift['date']} {shift['end_time']}", "%Y-%m-%d %H:%M")
+        
+        ics_content += "BEGIN:VEVENT\n"
+        ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+        ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+        ics_content += "SUMMARY:Work Shift\n"
+        ics_content += "END:VEVENT\n"
     
-    ics_content += "END:VCALENDAR\n"
+    ics_content += "END:VCALENDAR"
     return ics_content
-
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
