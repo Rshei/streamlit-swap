@@ -161,13 +161,11 @@ def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
 def extract_shifts_from_pdf(pdf_file):
-    # Read the PDF file
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page_num in range(len(reader.pages)):
         text += reader.pages[page_num].extract_text()
     
-    # Extract shifts
     shifts = []
     lines = text.split('\n')
     for line in lines:
@@ -187,15 +185,15 @@ def create_shift_event(date, shift):
     return start_datetime, end_datetime
 
 def create_ics(events):
-    ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\n"
+    cal = Calendar()
     for event in events:
-        ics_content += "BEGIN:VEVENT\n"
-        ics_content += f"SUMMARY:{event['summary']}\n"
-        ics_content += f"DTSTART;TZID=UTC:{event['dtstart'].strftime('%Y%m%dT%H%M%SZ')}\n"
-        ics_content += f"DTEND;TZID=UTC:{event['dtend'].strftime('%Y%m%dT%H%M%SZ')}\n"
-        ics_content += "END:VEVENT\n"
-    ics_content += "END:VCALENDAR"
-    return ics_content
+        ical_event = Event()
+        ical_event.add('summary', event['summary'])
+        ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
+        cal.add_component(ical_event)
+    return cal.to_ical()
 
 # Function to generate the ICS content
 def generate_ics(shifts):
@@ -287,30 +285,19 @@ elif selected == "Delete Shift":
 elif selected == "shifts to calendar":
     uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
 
-if uploaded_file is not None:
-    shifts = extract_shifts_from_pdf(uploaded_file)
-
-    # Define shifts hours
-    shift_hours = {
-        "06:30 - 15:00": "06:30 - 15:00",
-        "08:00 - 16:30": "08:00 - 16:30",
-        "13:30 - 22:00": "13:30 - 22:00",
-        "22:00 - 06:30": "22:00 - 06:30",
-    }
-
-    # Process shifts
-    events = []
-    for shift_date, shift_time in shifts:
-        start, end = create_shift_event(shift_date, shift_time)
-        if start and end:
-            events.append({
-                'summary': 'Work Shift',
-                'dtstart': start,
-                'dtend': end
-            })
-
-    # Create .ics content
-    ics_content = create_ics(events)
+    if uploaded_file is not None:
+        shifts = extract_shifts_from_pdf(uploaded_file)
     
-    # Provide .ics file for download
-    st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
+        events = []
+        for shift_date, shift_time in shifts:
+            start, end = create_shift_event(shift_date, shift_time)
+            if start and end:
+                events.append({
+                    'summary': 'Work Shift',
+                    'dtstart': start,
+                    'dtend': end
+                })
+    
+        ics_content = create_ics(events)
+        
+        st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
