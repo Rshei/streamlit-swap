@@ -187,16 +187,12 @@ def create_shift_event(date, shift):
 
 def create_ics(events):
     cal = Calendar()
-    cal.add('version', '2.0')
-    cal.add('prodid', '-//Your Company//Your Product//EN')
-
     for event in events:
         ical_event = Event()
         ical_event.add('summary', event['summary'])
-        ical_event.add('dtstart', event['dtstart'])
-        ical_event.add('dtend', event['dtend'])
-        ical_event.add('dtstamp', datetime.utcnow())
-        ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%S')}@yourdomain.com")
+        ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
         cal.add_component(ical_event)
     return cal.to_ical()
 
@@ -273,8 +269,7 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
-
+    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")        
     if uploaded_file is not None:
         shifts = extract_shifts_from_pdf(uploaded_file)
     
@@ -291,7 +286,6 @@ elif selected == "shifts to calendar":
         ics_content = create_ics(events)
         
         st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
-        
 
 
 
