@@ -159,22 +159,6 @@ def update_shift_in_firestore(old_doc_id, new_data):
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
-# Define the function to parse the PDF and extract shifts
-def parse_pdf(pdf):
-    doc = fitz.open(stream=pdf.read(), filetype="pdf")
-    text = ""
-    for page in doc:
-        text += page.get_text()
-    return text
-
-# Function to parse the PDF and extract shifts
-def parse_pdf(pdf):
-    reader = PyPDF2.PdfFileReader(pdf)
-    text = ""
-    for page_num in range(reader.getNumPages()):
-        text += reader.getPage(page_num).extract_text()
-    return text
-
 # Function to parse the PDF and extract shifts
 def parse_pdf(pdf):
     text = ""
@@ -194,7 +178,7 @@ def extract_shifts(text):
                 date_str = parts[0]
                 time_range = parts[1] if "Rest" not in parts else "Rest"
                 try:
-                    date = datetime.datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
+                    date = datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
                     shifts.append({"date": date, "time": time_range})
                 except ValueError:
                     continue
@@ -208,8 +192,8 @@ def generate_ics(shifts):
         if shift["time"] != "Rest":
             date = shift["date"]
             start_time, end_time = shift["time"].split(" - ")
-            start_datetime = datetime.datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
-            end_datetime = datetime.datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
+            start_datetime = datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
+            end_datetime = datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
             
             ics_content += "BEGIN:VEVENT\n"
             ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
@@ -219,6 +203,7 @@ def generate_ics(shifts):
     
     ics_content += "END:VCALENDAR\n"
     return ics_content
+
 
 
 # Handle shift-related actions
