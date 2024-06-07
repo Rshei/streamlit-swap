@@ -180,7 +180,7 @@ def extract_shifts_from_pdf(pdf_file):
     return shifts
 
 def create_shift_event(date, shift):
-    if shift == 'Rest':
+    if shift == 'Rest' or shift == 'COMP0':
         return None, None
     start_time, end_time = shift.split(' - ')
     start_datetime = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
@@ -189,7 +189,7 @@ def create_shift_event(date, shift):
 
 def create_ics(events):
     cal = Calendar()
-    cal.add('prodid', '-//Your Organization//Your Product//EN')
+    cal.add('prodid', '-//My App//Shift Calendar//EN')
     cal.add('version', '2.0')
 
     for event in events:
@@ -198,18 +198,11 @@ def create_ics(events):
         ical_event.add('dtstart', event['dtstart'])
         ical_event.add('dtend', event['dtend'])
         ical_event.add('dtstamp', datetime.utcnow())
-        ical_event.add('uid', str(uuid.uuid4()))
-        ical_event.add('created', datetime.utcnow())
-        ical_event.add('description', event.get('description', 'Work shift'))
-        ical_event.add('last-modified', datetime.utcnow())
-        ical_event.add('location', event.get('location', ''))
-        ical_event.add('sequence', 0)
-        ical_event.add('status', 'CONFIRMED')
-        ical_event.add('transp', 'OPAQUE')
+        ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%SZ')}-{event['summary']}@myapp.com")
+        ical_event.add('description', 'Work shift')
         cal.add_component(ical_event)
+
     return cal.to_ical()
-
-
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
@@ -298,15 +291,10 @@ elif selected == "shifts to calendar":
                     'dtend': end
                 })
     
-        if events:
-            # Create .ics content
-            ics_content = create_ics(events)
-            
-            # Provide .ics file for download
-            st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
-        else:
-            st.error("No valid shifts found in the uploaded PDF.")
-
-
+        # Create .ics content
+        ics_content = create_ics(events)
+        
+        # Provide .ics file for download
+        st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
 
 
