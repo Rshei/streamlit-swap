@@ -7,6 +7,7 @@ from google.cloud import firestore
 from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
+import fitz
 
 # Firebase configuration
 firebase_config = {
@@ -114,7 +115,7 @@ else:
         logout()
 
     # Simplified mobile-friendly navigation
-    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Matches", "Shifts for swap", "Delete Shift"])         
+    selected = st.sidebar.radio("Select action:", ["Insert Shifts", "Matches", "Shifts for swap", "Delete Shift", "shifts to calendar"])         
 
 # Function definitions for shift operations
 
@@ -156,6 +157,46 @@ def update_shift_in_firestore(old_doc_id, new_data):
 
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
+
+# Define the function to parse the PDF and extract shifts
+def parse_pdf(pdf):
+    doc = fitz.open(stream=pdf.read(), filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+
+# Define the function to extract shifts from the parsed text
+def extract_shifts(text):
+    shifts = []
+    lines = text.splitlines()
+    for line in lines:
+        if "Rest" in line or " - " in line:
+            date_str = line.split()[0]
+            time_range = line.split()[1] if "Rest" not in line else "Rest"
+            date = datetime.datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
+            shifts.append({"date": date, "time": time_range})
+    return shifts
+
+# Define the function to generate the ICS content
+def generate_ics(shifts):
+    ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Your Organization//NONSGML v1.0//EN\n"
+    
+    for shift in shifts:
+        if shift["time"] != "Rest":
+            date = shift["date"]
+            start_time, end_time = shift["time"].split(" - ")
+            start_datetime = datetime.datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
+            end_datetime = datetime.datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
+            
+            ics_content += "BEGIN:VEVENT\n"
+            ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+            ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+            ics_content += "SUMMARY:Work Shift\n"
+            ics_content += "END:VEVENT\n"
+    
+    ics_content += "END:VCALENDAR\n"
+    return ics_content
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
@@ -227,3 +268,29 @@ elif selected == "Delete Shift":
             st.write("Shift deleted.")
     else:
         st.write(f"No shifts found for {employee_name}.")
+
+elif selected == "shifts to calendar":
+    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
+    if uploaded_file is not None:
+        text = parse_pdf(uploaded_file)
+        shifts = extract_shifts(text)
+        ics_content = generate_ics(shifts)
+        ics_file_path = "shifts.ics"
+        
+        with open(ics_file_path, "w") as f:
+            f.write(ics_content)
+        
+        st.success("ICS file has been generated!")
+        with open(ics_file_path, "rb") as file:
+            btn = st.download_button(
+                label="Download ICS file",
+                data=file,
+                file_name="shifts.ics",
+                mime="text/calendar"
+            )
+    
+
+
+
+
+
