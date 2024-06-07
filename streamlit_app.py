@@ -173,21 +173,25 @@ def extract_shifts_from_pdf(pdf_file):
     
     # Extract shifts
     shifts = []
+    # Add space after each date for easier splitting
+    text = re.sub(r"(\d{2})", r"\1 ", text)
     lines = text.split('\n')
     for line in lines:
-        if line.strip() and line[0].isdigit():
-            parts = line.split()
-            date = parts[0]
-            shift = " ".join(parts[1:])
-            shifts.append((date, shift))
+        matches = re.findall(r'(\d{2} \d{2}:\d{2} - \d{2}:\d{2} .*?) (?=\d{2}|Rest|COMP0|$)', line)
+        for match in matches:
+            date, shift = match.split(' ', 1)
+            shifts.append((date, shift.strip()))
+        if "Rest" in line or "COMP0" in line:
+            date = re.search(r'(\d{2})', line).group(1)
+            shifts.append((date, "Rest" if "Rest" in line else "COMP0"))
     return shifts
 
 def create_shift_event(date, shift):
     if shift == 'Rest' or shift == 'COMP0':
         return None, None
     start_time, end_time = shift.split(' - ')
-    start_datetime = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
-    end_datetime = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %H:%M")
+    start_datetime = datetime.strptime(f"2024-05-{date} {start_time}", "%Y-%m-%d %H:%M")
+    end_datetime = datetime.strptime(f"2024-05-{date} {end_time}", "%Y-%m-%d %H:%M")
     return start_datetime, end_datetime
 
 def create_ics(events):
@@ -279,9 +283,10 @@ elif selected == "Delete Shift":
     else:
         st.write(f"No shifts found for {employee_name}.")
 
+
+
 elif selected == "shifts to calendar":
     uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
-
     if uploaded_file is not None:
         shifts = extract_shifts_from_pdf(uploaded_file)
         st.write("Extracted Shifts:", shifts)  # Debug statement
