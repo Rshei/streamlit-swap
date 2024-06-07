@@ -191,20 +191,19 @@ def generate_ics(shifts):
     for shift in shifts:
         if shift["time"] != "Rest":
             date = shift["date"]
-            start_time, end_time = shift["time"].split(" - ")
-            start_datetime = datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
-            end_datetime = datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
-            
-            ics_content += "BEGIN:VEVENT\n"
-            ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-            ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-            ics_content += "SUMMARY:Work Shift\n"
-            ics_content += "END:VEVENT\n"
+            time_range = shift["time"].split(" - ")
+            if len(time_range) == 2:
+                start_time, end_time = time_range
+                start_datetime = datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
+                end_datetime = datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
+
+                ics_content += "BEGIN:VEVENT\n"
+                ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+                ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
+                ics_content += "SUMMARY:Work Shift\n"
+                ics_content += "END:VEVENT\n"
     
-    ics_content += "END:VCALENDAR\n"
-    return ics_content
-
-
+    ics
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
