@@ -7,7 +7,9 @@ from google.cloud import firestore
 from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
-import PyPDF2
+import pdfplumber
+from ics import Calendar, Event
+import tempfile
 
 
 # Firebase configuration
@@ -175,42 +177,36 @@ def parse_pdf(pdf):
         text += reader.getPage(page_num).extract_text()
     return text
 
-# Function to extract shifts from the parsed text
-def extract_shifts(text):
+# Function to extract shifts from the uploaded PDF
+def extract_shifts_from_pdf(pdf_file):
     shifts = []
-    lines = text.splitlines()
-    for line in lines:
-        if "Rest" in line or " - " in line:
-            parts = line.split()
-            if len(parts) >= 2:
-                date_str = parts[0]
-                time_range = parts[1] if "Rest" not in parts else "Rest"
-                try:
-                    date = datetime.datetime.strptime(date_str, "%d/%m/%Y").strftime("%Y-%m-%d")
-                    shifts.append({"date": date, "time": time_range})
-                except ValueError:
-                    continue
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            # Extract shift data from text
+            # This is highly dependent on your PDF format
+            # Example extraction logic (placeholder)
+            lines = text.split('\n')
+            for line in lines:
+                if "Shift" in line:
+                    # Parse the shift information
+                    shift_info = line.split()
+                    date = shift_info[1]  # Example date extraction
+                    start_time = shift_info[2]  # Example start time extraction
+                    end_time = shift_info[3]  # Example end time extraction
+                    shifts.append((date, start_time, end_time))
     return shifts
 
-# Function to generate the ICS content
-def generate_ics(shifts):
-    ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Your Organization//NONSGML v1.0//EN\n"
-    
+# Function to create an .ics file from the extracted shifts
+def create_ics_file(shifts):
+    cal = Calendar()
     for shift in shifts:
-        if shift["time"] != "Rest":
-            date = shift["date"]
-            start_time, end_time = shift["time"].split(" - ")
-            start_datetime = datetime.datetime.strptime(date + " " + start_time, "%Y-%m-%d %H:%M")
-            end_datetime = datetime.datetime.strptime(date + " " + end_time, "%Y-%m-%d %H:%M")
-            
-            ics_content += "BEGIN:VEVENT\n"
-            ics_content += f"DTSTART:{start_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-            ics_content += f"DTEND:{end_datetime.strftime('%Y%m%dT%H%M%S')}\n"
-            ics_content += "SUMMARY:Work Shift\n"
-            ics_content += "END:VEVENT\n"
-    
-    ics_content += "END:VCALENDAR\n"
-    return ics_content
+        event = Event()
+        event.name = "Work Shift"
+        event.begin = f"{shift[0]} {shift[1]}"
+        event.end = f"{shift[0]} {shift[2]}"
+        cal.events.add(event)
+    return cal
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
@@ -284,18 +280,24 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
+    # File uploader for PDF shift file
+    uploaded_file = st.file_uploader("Upload your shifts PDF", type="pdf")
+    
     if uploaded_file is not None:
-        text = parse_pdf(uploaded_file)
-        shifts = extract_shifts(text)
-        ics_content = generate_ics(shifts)
+        shifts = extract_shifts_from_pdf(uploaded_file)
+        calendar = create_ics_file(shifts)
         
-        st.success("ICS file has been generated!")
+        # Create a temporary .ics file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".ics") as tmp_file:
+            tmp_file.write(str(calendar).encode('utf-8'))
+            tmp_file_path = tmp_file.name
+        
+        st.success("Shifts processed successfully!")
         st.download_button(
-            label="Download ICS file",
-            data=ics_content,
-            file_name="shifts.ics",
-            mime="text/calendar"
+            label="Download .ics file",
+            data=open(tmp_file_path, 'rb'),
+            file_name='shifts.ics',
+            mime='text/calendar'
         )
     
 
