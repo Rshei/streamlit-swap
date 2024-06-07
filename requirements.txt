@@ -7,3 +7,5 @@ passlib
 python-dotenv
 pycryptodome
 pdfplumber
+icalendar
+PyPDF2
