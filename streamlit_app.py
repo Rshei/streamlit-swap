@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import pdfplumber
 from icalendar import Calendar, Event
 import PyPDF2
-import re
+
 
 
 # Firebase configuration
@@ -285,30 +285,3 @@ elif selected == "Delete Shift":
     else:
         st.write(f"No shifts found for {employee_name}.")
 
-
-
-"""elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
-    if uploaded_file is not None:
-        shifts = extract_shifts_from_pdf(uploaded_file)
-        st.write("Extracted Shifts:", shifts)  # Debug statement
-    
-        # Process shifts
-        events = []
-        for shift_date, shift_time in shifts:
-            start, end = create_shift_event(shift_date, shift_time)
-            if start and end:
-                events.append({
-                    'summary': 'Work Shift',
-                    'dtstart': start,
-                    'dtend': end
-                })
-        
-        st.write("Processed Events:", events)  # Debug statement
-    
-        # Create .ics content
-        ics_content = create_ics(events)
-        st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
-        
-        # Provide .ics file for download
-        # st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
