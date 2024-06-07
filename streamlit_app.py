@@ -168,6 +168,9 @@ def extract_shifts_from_pdf(pdf_file):
     for page_num in range(len(reader.pages)):
         text += reader.pages[page_num].extract_text()
     
+    # Debug: Print extracted text
+    st.write("Extracted Text from PDF:", text)
+    
     # Extract shifts
     shifts = []
     lines = text.split('\n')
@@ -203,6 +206,8 @@ def create_ics(events):
         cal.add_component(ical_event)
 
     return cal.to_ical()
+
+
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
