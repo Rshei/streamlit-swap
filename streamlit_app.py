@@ -8,6 +8,7 @@ from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
 import pdfplumber
+from datetime import datetime
 
 # Firebase configuration
 firebase_config = {
