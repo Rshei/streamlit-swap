@@ -10,3 +10,4 @@ pdfplumber
 icalendar
 PyPDF2
 uuid
+re
