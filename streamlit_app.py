@@ -162,11 +162,13 @@ def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
 def extract_shifts_from_pdf(pdf_file):
+    # Read the PDF file
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page_num in range(len(reader.pages)):
         text += reader.pages[page_num].extract_text()
     
+    # Extract shifts
     shifts = []
     lines = text.split('\n')
     for line in lines:
@@ -190,9 +192,17 @@ def create_ics(events):
     for event in events:
         ical_event = Event()
         ical_event.add('summary', event['summary'])
-        ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
-        ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
-        ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtstart', event['dtstart'])
+        ical_event.add('dtend', event['dtend'])
+        ical_event.add('dtstamp', datetime.utcnow())
+        ical_event.add('uid', str(uuid.uuid4()))
+        ical_event.add('created', datetime.utcnow())
+        ical_event.add('description', event.get('description', ''))
+        ical_event.add('last-modified', datetime.utcnow())
+        ical_event.add('location', event.get('location', ''))
+        ical_event.add('sequence', 0)
+        ical_event.add('status', 'CONFIRMED')
+        ical_event.add('transp', 'OPAQUE')
         cal.add_component(ical_event)
     return cal.to_ical()
 
@@ -269,10 +279,12 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")        
+    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
+
     if uploaded_file is not None:
         shifts = extract_shifts_from_pdf(uploaded_file)
     
+        # Process shifts
         events = []
         for shift_date, shift_time in shifts:
             start, end = create_shift_event(shift_date, shift_time)
@@ -283,8 +295,10 @@ elif selected == "shifts to calendar":
                     'dtend': end
                 })
     
+        # Create .ics content
         ics_content = create_ics(events)
         
+        # Provide .ics file for download
         st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
 
 
