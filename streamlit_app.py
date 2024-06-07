@@ -193,13 +193,13 @@ def create_ics(events):
     for event in events:
         ical_event = Event()
         ical_event.add('summary', event['summary'])
-        ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
-        ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
-        ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtstart', event['dtstart'])
+        ical_event.add('dtend', event['dtend'])
+        ical_event.add('dtstamp', datetime.utcnow())
         ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%S')}@yourdomain.com")
-        ical_event.add('priority', 5)
         cal.add_component(ical_event)
     return cal.to_ical()
+
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
