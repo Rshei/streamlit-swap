@@ -161,48 +161,45 @@ def update_shift_in_firestore(old_doc_id, new_data):
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
-def extract_text_from_pdf(pdf_file):
-    pdf_reader = PyPDF2.PdfFileReader(pdf_file)
+def extract_shifts_from_pdf(pdf_file):
+    reader = PyPDF2.PdfReader(pdf_file)
     text = ""
-    for page_num in range(pdf_reader.numPages):
-        page = pdf_reader.getPage(page_num)
-        text += page.extract_text()
-    return text
-
-def create_ics_event(event_details):
-    event = Event()
-    event.add('summary', event_details['summary'])
-    event.add('dtstart', event_details['dtstart'])
-    event.add('dtend', event_details['dtend'])
-    event.add('description', event_details['description'])
-    return event
-
-def parse_event_details_from_text(text):
-    # This is a simplistic parser and should be adjusted based on the actual PDF content
+    for page_num in range(len(reader.pages)):
+        text += reader.pages[page_num].extract_text()
+    
+    shifts = []
     lines = text.split('\n')
-    events = []
     for line in lines:
-        if 'Event:' in line:
-            event_details = {
-                'summary': line.split('Event: ')[1],
-                'dtstart': datetime.strptime(lines[lines.index(line)+1].split('Start: ')[1], '%Y-%m-%d %H:%M'),
-                'dtend': datetime.strptime(lines[lines.index(line)+2].split('End: ')[1], '%Y-%m-%d %H:%M'),
-                'description': lines[lines.index(line)+3].split('Description: ')[1]
-            }
-            events.append(event_details)
-    return events
+        if line.strip() and line[0].isdigit():
+            parts = line.split()
+            date = parts[0]
+            shift = " ".join(parts[1:])
+            shifts.append((date, shift))
+    return shifts
 
-def create_ics_from_pdf(pdf_file):
-    text = extract_text_from_pdf(pdf_file)
-    event_details_list = parse_event_details_from_text(text)
-    
+def create_shift_event(date, shift):
+    if shift == 'Rest':
+        return None, None
+    start_time, end_time = shift.split(' - ')
+    start_datetime = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
+    end_datetime = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %H:%M")
+    return start_datetime, end_datetime
+
+def create_ics(events):
     cal = Calendar()
-    for event_details in event_details_list:
-        event = create_ics_event(event_details)
-        cal.add_component(event)
-    
-    return cal.to_ical()
+    cal.add('version', '2.0')
+    cal.add('prodid', '-//Your Company//Your Product//EN')
 
+    for event in events:
+        ical_event = Event()
+        ical_event.add('summary', event['summary'])
+        ical_event.add('dtstart', event['dtstart'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtend', event['dtend'].strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('dtstamp', datetime.utcnow().strftime('%Y%m%dT%H%M%S'))
+        ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%S')}@yourdomain.com")
+        ical_event.add('priority', 5)
+        cal.add_component(ical_event)
+    return cal.to_ical()
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
@@ -276,22 +273,24 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
 
     if uploaded_file is not None:
-        st.write("File uploaded successfully!")
+        shifts = extract_shifts_from_pdf(uploaded_file)
     
-        ics_data = create_ics_from_pdf(uploaded_file)
+        events = []
+        for shift_date, shift_time in shifts:
+            start, end = create_shift_event(shift_date, shift_time)
+            if start and end:
+                events.append({
+                    'summary': 'Work Shift',
+                    'dtstart': start,
+                    'dtend': end
+                })
     
-        st.write("ICS file created successfully!")
-    
-        st.download_button(
-            label="Download ICS file",
-            data=ics_data,
-            file_name="output_calendar.ics",
-            mime="text/calendar"
-        )
-    # Streamlit app
+        ics_content = create_ics(events)
+        
+        st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
 
     
 
