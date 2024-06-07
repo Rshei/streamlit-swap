@@ -6,3 +6,4 @@ google-cloud-firestore
 passlib
 python-dotenv
 pycryptodome
+pdfplumber
