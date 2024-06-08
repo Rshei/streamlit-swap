@@ -162,6 +162,14 @@ def update_shift_in_firestore(old_doc_id, new_data):
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
+def extract_month_year(text):
+    # Extract month and year from the text
+    match = re.search(r'From\s+\w+\s+(\d{2})/(\d{4})', text)
+    if match:
+        month, year = match.groups()
+        return int(month), int(year)
+    return None, None
+
 def extract_shifts_from_pdf(pdf_file):
     # Read the PDF file
     reader = PyPDF2.PdfReader(pdf_file)
@@ -172,6 +180,12 @@ def extract_shifts_from_pdf(pdf_file):
     # Debug: Print extracted text
     st.write("Extracted Text from PDF:", text)
     
+    # Extract month and year
+    month, year = extract_month_year(text)
+    if not month or not year:
+        st.error("Failed to extract month and year from the PDF.")
+        return []
+
     # Extract shifts
     shifts = []
     # Add space before each date for easier splitting
@@ -186,14 +200,14 @@ def extract_shifts_from_pdf(pdf_file):
         if "Rest" in line or "COMP0" in line:
             date = re.search(r'(\d{2})', line).group(1)
             shifts.append((date, "Rest" if "Rest" in line else "COMP0"))
-    return shifts
+    return shifts, month, year
 
-def create_shift_event(date, shift):
+def create_shift_event(date, shift, month, year):
     if shift == 'Rest' or shift == 'COMP0':
         return None, None
     start_time, end_time = shift.split(' - ')
-    start_datetime = datetime.strptime(f"2024-05-{date} {start_time}", "%Y-%m-%d %H:%M")
-    end_datetime = datetime.strptime(f"2024-05-{date} {end_time}", "%Y-%m-%d %H:%M")
+    start_datetime = datetime.strptime(f"{year}-{month:02d}-{date} {start_time}", "%Y-%m-%d %H:%M")
+    end_datetime = datetime.strptime(f"{year}-{month:02d}-{date} {end_time}", "%Y-%m-%d %H:%M")
     return start_datetime, end_datetime
 
 def create_ics(events):
@@ -212,7 +226,6 @@ def create_ics(events):
         cal.add_component(ical_event)
 
     return cal.to_ical()
-
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
@@ -284,4 +297,31 @@ elif selected == "Delete Shift":
             st.write("Shift deleted.")
     else:
         st.write(f"No shifts found for {employee_name}.")
+
+elif selected == "shifts to calendar":
+    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
+    
+    if uploaded_file is not None:
+        shifts, month, year = extract_shifts_from_pdf(uploaded_file)
+        st.write("Extracted Shifts:", shifts)  # Debug statement
+    
+        # Process shifts
+        events = []
+        for shift_date, shift_time in shifts:
+            start, end = create_shift_event(shift_date, shift_time, month, year)
+            if start and end:
+                events.append({
+                    'summary': 'Work Shift',
+                    'dtstart': start,
+                    'dtend': end
+                })
+        
+        st.write("Processed Events:", events)  # Debug statement
+    
+        # Create .ics content
+        ics_content = create_ics(events)
+        st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
+        
+        # Provide .ics file for download
+        st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
 
