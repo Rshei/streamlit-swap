@@ -176,6 +176,7 @@ def extract_month_year(text):
         if match:
             st.write(f"Matched pattern: {pattern}")  # Debug statement
             groups = match.groups()
+            st.write(f"Matched groups: {groups}")  # Debug statement
             # Ensure groups are ordered as day, month, year
             if len(groups) == 3:
                 day, month, year = groups if int(groups[0]) <= 12 else (groups[1], groups[0], groups[2])
@@ -317,23 +318,24 @@ elif selected == "shifts to calendar":
         shifts, month, year = extract_shifts_from_pdf(uploaded_file)
         st.write("Extracted Shifts:", shifts)  # Debug statement
     
-        # Process shifts
-        events = []
-        for shift_date, shift_time in shifts:
-            start, end = create_shift_event(shift_date, shift_time, month, year)
-            if start and end:
-                events.append({
-                    'summary': 'Work Shift',
-                    'dtstart': start,
-                    'dtend': end
-                })
-        
-        st.write("Processed Events:", events)  # Debug statement
+        if month and year:
+            # Process shifts
+            events = []
+            for shift_date, shift_time in shifts:
+                start, end = create_shift_event(shift_date, shift_time, month, year)
+                if start and end:
+                    events.append({
+                        'summary': 'Work Shift',
+                        'dtstart': start,
+                        'dtend': end
+                    })
+            
+            st.write("Processed Events:", events)  # Debug statement
     
-        # Create .ics content
-        ics_content = create_ics(events)
-        st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
-        
-        # Provide .ics file for download
-        st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
+            # Create .ics content
+            ics_content = create_ics(events)
+            st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
+            
+            # Provide .ics file for download
+            st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
 
