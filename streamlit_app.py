@@ -163,15 +163,24 @@ def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
 def extract_month_year(text):
-    # Extract month and year from the text with more robust regex
-    match = re.search(r'From\s+\w+\s+(\d{2})/(\d{2})/(\d{4})', text)
-    if match:
-        day, month, year = match.groups()
-        return int(month), int(year)
-    match = re.search(r'(\d{2})/(\d{2})/(\d{4})', text)
-    if match:
-        day, month, year = match.groups()
-        return int(month), int(year)
+    # Enhanced regex patterns to match various date formats
+    patterns = [
+        r'From\s+\w+\s+(\d{2})/(\d{2})/(\d{4})',
+        r'(\d{2})/(\d{2})/(\d{4})',
+        r'(\d{2})-(\d{2})-(\d{4})',
+        r'(\d{4})/(\d{2})/(\d{2})',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            st.write(f"Matched pattern: {pattern}")  # Debug statement
+            groups = match.groups()
+            # Ensure groups are ordered as day, month, year
+            if len(groups) == 3:
+                day, month, year = groups if int(groups[0]) <= 12 else (groups[1], groups[0], groups[2])
+                return int(month), int(year)
+    
     return None, None
 
 def extract_shifts_from_pdf(pdf_file):
@@ -230,7 +239,6 @@ def create_ics(events):
         cal.add_component(ical_event)
 
     return cal.to_ical()
-
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
