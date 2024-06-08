@@ -163,10 +163,14 @@ def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
 def extract_month_year(text):
-    # Extract month and year from the text
-    match = re.search(r'From\s+\w+\s+(\d{2})/(\d{4})', text)
+    # Extract month and year from the text with more robust regex
+    match = re.search(r'From\s+\w+\s+(\d{2})/(\d{2})/(\d{4})', text)
     if match:
-        month, year = match.groups()
+        day, month, year = match.groups()
+        return int(month), int(year)
+    match = re.search(r'(\d{2})/(\d{2})/(\d{4})', text)
+    if match:
+        day, month, year = match.groups()
         return int(month), int(year)
     return None, None
 
@@ -184,7 +188,7 @@ def extract_shifts_from_pdf(pdf_file):
     month, year = extract_month_year(text)
     if not month or not year:
         st.error("Failed to extract month and year from the PDF.")
-        return []
+        return [], None, None
 
     # Extract shifts
     shifts = []
