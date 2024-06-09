@@ -184,9 +184,6 @@ def consolidate_shift_times(shift_string):
                         start_time = shift_start_time
                     if end_time is None or shift_end_time > end_time:
                         end_time = shift_end_time
-
-                    if 'HZ_RS' in shift or 'HZ Resiliency Session' in shift_string:
-                        resiliency_session = True
                 except ValueError:
                     pass  # Ignore parsing errors for now
     
