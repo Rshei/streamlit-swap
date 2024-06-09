@@ -10,4 +10,5 @@ pdfplumber
 icalendar
 PyPDF2
 uuid
-
+pymupdf
+tempfile
