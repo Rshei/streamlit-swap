@@ -208,36 +208,41 @@ def extract_schedule_from_pdf(pdf_path):
     days_abbr = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
     for line in lines:
-        parts = line.split(' ')
-        if any(parts[0].startswith(day) for day in days_abbr):
-            day_abbr = parts[0]
-            date_str = parts[1]
-            try:
-                day = int(date_str)
-            except ValueError:
-                continue
+        try:
+            parts = line.split(' ')
+            if any(parts[0].startswith(day) for day in days_abbr):
+                day_abbr = parts[0]
+                date_str = parts[1]
+                try:
+                    day = int(date_str)
+                except ValueError:
+                    continue
 
-            rest_indicator = parts[2] if len(parts) > 2 else None
+                rest_indicator = parts[2] if len(parts) > 2 else None
 
-            if rest_indicator in ['Rest', 'COMP0']:
-                schedule_data.append({
-                    'day_abbr': day_abbr,
-                    'date': date_str,
-                    'shift': 'Rest',
-                    'summary': 'Rest Day'
-                })
-            else:
-                shifts = ' '.join(parts[2:])
-                consolidated_shift, resiliency_session = consolidate_shift_times(shifts)
-                summary = "Work Shift"
-                if resiliency_session:
-                    summary += " - Resiliency Session"
-                schedule_data.append({
-                    'day_abbr': day_abbr,
-                    'date': date_str,
-                    'shift': consolidated_shift,
-                    'summary': summary
-                })
+                if rest_indicator in ['Rest', 'COMP0']:
+                    schedule_data.append({
+                        'day_abbr': day_abbr,
+                        'date': date_str,
+                        'shift': 'Rest',
+                        'summary': 'Rest Day'
+                    })
+                else:
+                    shifts = ' '.join(parts[2:])
+                    consolidated_shift, resiliency_session = consolidate_shift_times(shifts)
+                    summary = "Work Shift"
+                    if resiliency_session:
+                        summary += " - Resiliency Session"
+                    schedule_data.append({
+                        'day_abbr': day_abbr,
+                        'date': date_str,
+                        'shift': consolidated_shift,
+                        'summary': summary
+                    })
+        except IndexError as e:
+            st.error(f"Error processing line: {line} - {e}")
+        except Exception as e:
+            st.error(f"Unexpected error processing line: {line} - {e}")
 
     return schedule_data
 
@@ -275,7 +280,6 @@ def create_ics(schedule_data, month, year):
 
     ics_content += "END:VCALENDAR\n"
     return ics_content
-
 
 # Handle shift-related actions
 if selected == "Insert Shifts":
@@ -387,4 +391,3 @@ elif selected == "shifts to calendar":
                     st.error(f"Error creating ICS file: {e}")
         except Exception as e:
             st.error(f"Error processing the uploaded file: {e}")
-
