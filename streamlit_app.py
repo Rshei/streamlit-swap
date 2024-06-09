@@ -11,7 +11,7 @@ import pdfplumber
 from icalendar import Calendar, Event
 import PyPDF2
 import tempfile
-
+import fitz
 
 
 # Firebase configuration
