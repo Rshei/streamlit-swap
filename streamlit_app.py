@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import pdfplumber
 from icalendar import Calendar, Event
 import PyPDF2
+import tempfile
 
 
 
@@ -162,84 +163,125 @@ def update_shift_in_firestore(old_doc_id, new_data):
 def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
-def extract_month_year(text):
-    # Enhanced regex patterns to match various date formats
-    patterns = [
-        r'From\s+\w+\s+(\d{2})/(\d{2})/(\d{4})',
-        r'(\d{2})/(\d{2})/(\d{4})',
-        r'(\d{2})-(\d{2})-(\d{4})',
-        r'(\d{4})/(\d{2})/(\d{2})',
-    ]
+def consolidate_shift_times(shift_string):
+    # Split the shift string into individual shifts
+    custom_shifts = shift_string.split(', ')
     
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
-            st.write(f"Matched pattern: {pattern}")  # Debug statement
-            groups = match.groups()
-            st.write(f"Matched groups: {groups}")  # Debug statement
-            # Ensure groups are ordered as day, month, year
-            if len(groups) == 3:
-                day, month, year = groups if int(groups[0]) <= 12 else (groups[1], groups[0], groups[2])
-                return int(month), int(year)
+    # Initialize start_time and end_time variables
+    start_time = None
+    end_time = None
     
-    return None, None
+    for shift in custom_shifts:
+        time_range = shift.split(' ')[0] + " - " + shift.split(' ')[2]  # Correct extraction of time range
+        if '-' in time_range:
+            try:
+                shift_start_time, shift_end_time = time_range.split('-')
+                shift_start_time = datetime.strptime(shift_start_time.strip(), '%H:%M')
+                shift_end_time = datetime.strptime(shift_end_time.strip(), '%H:%M')
+                
+                if start_time is None or shift_start_time < start_time:
+                    start_time = shift_start_time
+                if end_time is None or shift_end_time > end_time:
+                    end_time = shift_end_time       
+            except ValueError:
+                pass  # Ignore parsing errors for now
+    
+    if start_time and end_time:
+        return f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+    else:
+        return "Invalid shift times"
 
-def extract_shifts_from_pdf(pdf_file):
-    # Read the PDF file
-    reader = PyPDF2.PdfReader(pdf_file)
-    text = ""
-    for page_num in range(len(reader.pages)):
-        text += reader.pages[page_num].extract_text()
-    
-    # Debug: Print extracted text
-    st.write("Extracted Text from PDF:", text)
-    
-    # Extract month and year
-    month, year = extract_month_year(text)
-    if not month or not year:
-        st.error("Failed to extract month and year from the PDF.")
-        return [], None, None
+def extract_schedule_from_pdf(pdf_path):
+    with pdfplumber.open(pdf_path) as pdf:
+        text = ''
+        for page in pdf.pages:
+            text += page.extract_text()
 
-    # Extract shifts
-    shifts = []
-    # Add space before each date for easier splitting
-    text = re.sub(r'(\d{2})(\d{2}:\d{2} - \d{2}:\d{2})', r'\1 \2', text)
+    # Split text into lines
     lines = text.split('\n')
+    
+    # Initialize an empty list to hold the extracted data
+    schedule_data = []
+
+    # Define the day abbreviations
+    days_abbr = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
     for line in lines:
-        # Find all shift patterns
-        matches = re.findall(r'(\d{2}) (\d{2}:\d{2} - \d{2}:\d{2} .*?)(?=\d{2}|Rest|COMP0|$)', line)
-        for match in matches:
-            date, shift = match[0], match[1]
-            shifts.append((date, shift.strip()))
-        if "Rest" in line or "COMP0" in line:
-            date = re.search(r'(\d{2})', line).group(1)
-            shifts.append((date, "Rest" if "Rest" in line else "COMP0"))
-    return shifts, month, year
+        parts = line.split(' ')
+        if any(parts[0].startswith(day) for day in days_abbr):
+            day_abbr = parts[0]
+            date_str = parts[1]
+            # Filter out lines that don't follow the expected format
+            try:
+                day = int(date_str)
+            except ValueError:
+                continue
 
-def create_shift_event(date, shift, month, year):
-    if shift == 'Rest' or shift == 'COMP0':
-        return None, None
-    start_time, end_time = shift.split(' - ')
-    start_datetime = datetime.strptime(f"{year}-{month:02d}-{date} {start_time}", "%Y-%m-%d %H:%M")
-    end_datetime = datetime.strptime(f"{year}-{month:02d}-{date} {end_time}", "%Y-%m-%d %H:%M")
-    return start_datetime, end_datetime
+            rest_indicator = parts[2] if len(parts) > 2 else None
 
-def create_ics(events):
-    cal = Calendar()
-    cal.add('prodid', '-//My App//Shift Calendar//EN')
-    cal.add('version', '2.0')
+            if rest_indicator in ['Rest', 'COMP0']:
+                schedule_data.append({
+                    'day_abbr': day_abbr,
+                    'date': date_str,
+                    'shift': 'Rest'
+                })
+            else:
+                shifts = ' '.join(parts[2:])
+                if '08:00 - 14:00' in shifts and '14:30 - 16:30' in shifts:
+                    consolidated_shift = '08:00 - 16:30'
+                elif '06:30 - 12:30' in shifts and '13:00 - 15:00' in shifts:
+                    consolidated_shift = '06:30 - 15:00'
+                elif '13:30 - 19:30' in shifts and '20:00 - 22:00' in shifts:
+                    consolidated_shift = '13:30 - 22:00'
+                elif '22:00 - 06:30' in shifts:
+                    consolidated_shift = '22:00 - 06:30'
+                else:
+                    # Handle cases where shifts don't match the expected patterns
+                    consolidated_shift = consolidate_shift_times(shifts)
+                
+                schedule_data.append({
+                    'day_abbr': day_abbr,
+                    'date': date_str,
+                    'shift': consolidated_shift
+                })
 
-    for event in events:
-        ical_event = Event()
-        ical_event.add('summary', event['summary'])
-        ical_event.add('dtstart', event['dtstart'])
-        ical_event.add('dtend', event['dtend'])
-        ical_event.add('dtstamp', datetime.utcnow())
-        ical_event.add('uid', f"{event['dtstart'].strftime('%Y%m%dT%H%M%SZ')}-{event['summary']}@myapp.com")
-        ical_event.add('description', 'Work shift')
-        cal.add_component(ical_event)
+    return schedule_data
 
-    return cal.to_ical()
+def create_ics(schedule_data, month, year):
+    ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Your Organization//NONSGML v1.0//EN\n"
+    month = int(month)
+    year = int(year)
+    for item in schedule_data:
+        try:
+            day = int(item['date'])
+            event_date = datetime(year, month, day)
+
+            if item['shift'] == 'Rest':
+                continue
+            else:
+                time_range = item['shift']
+                start_time, end_time = time_range.split('-')
+                start_time = datetime.strptime(start_time.strip(), '%H:%M').strftime('%H%M%S')
+                end_time = datetime.strptime(end_time.strip(), '%H:%M').strftime('%H%M%S')
+
+                dtstart = f"{event_date.strftime('%Y%m%d')}T{start_time}"
+                dtend = f"{event_date.strftime('%Y%m%d')}T{end_time}"
+
+                ics_event = (
+                    "BEGIN:VEVENT\n"
+                    f"DTSTART:{dtstart}\n"
+                    f"DTEND:{dtend}\n"
+                    "SUMMARY:Work Shift\n"
+                    "END:VEVENT\n"
+                )
+                ics_content += ics_event
+        except ValueError as e:
+            st.error(f"Error parsing date or shift for item: {item}. Error: {e}")
+            continue
+
+    ics_content += "END:VCALENDAR\n"
+    return ics_content
+
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
@@ -312,30 +354,39 @@ elif selected == "Delete Shift":
         st.write(f"No shifts found for {employee_name}.")
 
 elif selected == "shifts to calendar":
-    uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
+    st.title('Shift Schedule PDF to ICS Converter')
+
+    uploaded_file = st.file_uploader("Upload PDF File", type="pdf")
     
     if uploaded_file is not None:
-        shifts, month, year = extract_shifts_from_pdf(uploaded_file)
-        st.write("Extracted Shifts:", shifts)  # Debug statement
+        # Save uploaded file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            tmp_file_path = tmp_file.name
+    
+        schedule_data = extract_schedule_from_pdf(tmp_file_path)
+    
+        # Get the month and year from the user
+        month = st.text_input("Enter the month (MM):")
+        year = st.text_input("Enter the year (YYYY):")
     
         if month and year:
-            # Process shifts
-            events = []
-            for shift_date, shift_time in shifts:
-                start, end = create_shift_event(shift_date, shift_time, month, year)
-                if start and end:
-                    events.append({
-                        'summary': 'Work Shift',
-                        'dtstart': start,
-                        'dtend': end
-                    })
-            
-            st.write("Processed Events:", events)  # Debug statement
+            try:
+                ics_content = create_ics(schedule_data, month, year)
     
-            # Create .ics content
-            ics_content = create_ics(events)
-            st.write("Generated ICS Content:", ics_content.decode('utf-8'))  # Debug statement
-            
-            # Provide .ics file for download
-            st.download_button(label="Download ICS file", data=ics_content, file_name="shifts.ics", mime="text/calendar")
+                # Create the ICS file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.ics') as tmp_ics:
+                    tmp_ics.write(ics_content.encode('utf-8'))
+                    tmp_ics_path = tmp_ics.name
+    
+                # Provide a download link
+                st.success('ICS file created successfully!')
+                st.download_button(
+                    label="Download ICS File",
+                    data=open(tmp_ics_path, 'rb').read(),
+                    file_name="shift_schedule.ics",
+                    mime="text/calendar"
+                )
+            except ValueError as e:
+                st.error(f"Error creating ICS file: {e}")
 
