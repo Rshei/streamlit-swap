@@ -361,7 +361,7 @@ elif selected == "shifts to calendar":
     if uploaded_file is not None:
         # Save uploaded file to a temporary location
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-            tmp_file.write(uploaded_file.read())
+            #tmp_file.write(uploaded_file.read())
             tmp_file_path = tmp_file.name
     
         schedule_data = extract_schedule_from_pdf(tmp_file_path)
