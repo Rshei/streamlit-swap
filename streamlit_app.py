@@ -164,85 +164,86 @@ def delete_shift_from_firestore(doc_id):
     db.collection('shifts').document(doc_id).delete()
 
 def consolidate_shift_times(shift_string):
+    # Split the shift string into individual shifts
     custom_shifts = shift_string.split(', ')
     
+    # Initialize start_time and end_time variables
     start_time = None
     end_time = None
-    resiliency_session = False
     
     for shift in custom_shifts:
-        parts = shift.split(' ')
-        if len(parts) >= 3:
-            time_range = parts[0] + " - " + parts[2]
-            if '-' in time_range:
-                try:
-                    shift_start_time, shift_end_time = time_range.split('-')
-                    shift_start_time = datetime.strptime(shift_start_time.strip(), '%H:%M')
-                    shift_end_time = datetime.strptime(shift_end_time.strip(), '%H:%M')
-                    
-                    if start_time is None or shift_start_time < start_time:
-                        start_time = shift_start_time
-                    if end_time is None or shift_end_time > end_time:
-                        end_time = shift_end_time
-                except ValueError:
-                    pass  # Ignore parsing errors for now
+        time_range = shift.split(' ')[0] + " - " + shift.split(' ')[2]  # Correct extraction of time range
+        if '-' in time_range:
+            try:
+                shift_start_time, shift_end_time = time_range.split('-')
+                shift_start_time = datetime.strptime(shift_start_time.strip(), '%H:%M')
+                shift_end_time = datetime.strptime(shift_end_time.strip(), '%H:%M')
+                
+                if start_time is None or shift_start_time < start_time:
+                    start_time = shift_start_time
+                if end_time is None or shift_end_time > end_time:
+                    end_time = shift_end_time       
+            except ValueError:
+                pass  # Ignore parsing errors for now
     
     if start_time and end_time:
-        return f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}", resiliency_session
+        return f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
     else:
-        return "Invalid shift times", False
+        return "Invalid shift times"
 
 def extract_schedule_from_pdf(pdf_path):
-    try:
-        with fitz.open(pdf_path) as pdf:
-            text = ''
-            for page in pdf:
-                text += page.get_text()
-    except Exception as e:
-        st.error(f"Error reading PDF file: {e}")
-        return []
+    with pdfplumber.open(pdf_path) as pdf:
+        text = ''
+        for page in pdf.pages:
+            text += page.extract_text()
 
+    # Split text into lines
     lines = text.split('\n')
+    
+    # Initialize an empty list to hold the extracted data
     schedule_data = []
 
+    # Define the day abbreviations
     days_abbr = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
     for line in lines:
-        try:
-            parts = line.split(' ')
-            if any(parts[0].startswith(day) for day in days_abbr):
-                day_abbr = parts[0]
-                date_str = parts[1]
-                try:
-                    day = int(date_str)
-                except ValueError:
-                    continue
+        parts = line.split(' ')
+        if any(parts[0].startswith(day) for day in days_abbr):
+            day_abbr = parts[0]
+            date_str = parts[1]
+            # Filter out lines that don't follow the expected format
+            try:
+                day = int(date_str)
+            except ValueError:
+                continue
 
-                rest_indicator = parts[2] if len(parts) > 2 else None
+            rest_indicator = parts[2] if len(parts) > 2 else None
 
-                if rest_indicator in ['Rest', 'COMP0']:
-                    schedule_data.append({
-                        'day_abbr': day_abbr,
-                        'date': date_str,
-                        'shift': 'Rest',
-                        'summary': 'Rest Day'
-                    })
+            if rest_indicator in ['Rest', 'COMP0']:
+                schedule_data.append({
+                    'day_abbr': day_abbr,
+                    'date': date_str,
+                    'shift': 'Rest'
+                })
+            else:
+                shifts = ' '.join(parts[2:])
+                if '08:00 - 14:00' in shifts and '14:30 - 16:30' in shifts:
+                    consolidated_shift = '08:00 - 16:30'
+                elif '06:30 - 12:30' in shifts and '13:00 - 15:00' in shifts:
+                    consolidated_shift = '06:30 - 15:00'
+                elif '13:30 - 19:30' in shifts and '20:00 - 22:00' in shifts:
+                    consolidated_shift = '13:30 - 22:00'
+                elif '22:00 - 06:30' in shifts:
+                    consolidated_shift = '22:00 - 06:30'
                 else:
-                    shifts = ' '.join(parts[2:])
-                    consolidated_shift, resiliency_session = consolidate_shift_times(shifts)
-                    summary = "Work Shift"
-                    if resiliency_session:
-                        summary += " - Resiliency Session"
-                    schedule_data.append({
-                        'day_abbr': day_abbr,
-                        'date': date_str,
-                        'shift': consolidated_shift,
-                        'summary': summary
-                    })
-        except IndexError as e:
-            st.error(f"Error processing line: {line} - {e}")
-        except Exception as e:
-            st.error(f"Unexpected error processing line: {line} - {e}")
+                    # Handle cases where shifts don't match the expected patterns
+                    consolidated_shift = consolidate_shift_times(shifts)
+                
+                schedule_data.append({
+                    'day_abbr': day_abbr,
+                    'date': date_str,
+                    'shift': consolidated_shift
+                })
 
     return schedule_data
 
@@ -270,7 +271,7 @@ def create_ics(schedule_data, month, year):
                     "BEGIN:VEVENT\n"
                     f"DTSTART:{dtstart}\n"
                     f"DTEND:{dtend}\n"
-                    f"SUMMARY:{item['summary']}\n"
+                    "SUMMARY:Work Shift\n"
                     "END:VEVENT\n"
                 )
                 ics_content += ics_event
@@ -358,36 +359,33 @@ elif selected == "shifts to calendar":
     uploaded_file = st.file_uploader("Upload PDF File", type="pdf")
     
     if uploaded_file is not None:
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                tmp_file.write(uploaded_file.read())
-                tmp_file_path = tmp_file.name
+        # Save uploaded file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            tmp_file_path = tmp_file.name
     
-            schedule_data = extract_schedule_from_pdf(tmp_file_path)
-            st.write("Extracted schedule data:")
-            st.write(schedule_data)
+        schedule_data = extract_schedule_from_pdf(tmp_file_path)
     
-            month = st.text_input("Enter the month (MM):")
-            year = st.text_input("Enter the year (YYYY):")
+        # Get the month and year from the user
+        month = st.text_input("Enter the month (MM):")
+        year = st.text_input("Enter the year (YYYY):")
     
-            if month and year:
-                try:
-                    ics_content = create_ics(schedule_data, month, year)
-                    st.write("Created ICS Calendar Content:")
-                    st.write(ics_content)
+        if month and year:
+            try:
+                ics_content = create_ics(schedule_data, month, year)
     
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.ics') as tmp_ics:
-                        tmp_ics.write(ics_content.encode('utf-8'))
-                        tmp_ics_path = tmp_ics.name
+                # Create the ICS file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.ics') as tmp_ics:
+                    tmp_ics.write(ics_content.encode('utf-8'))
+                    tmp_ics_path = tmp_ics.name
     
-                    st.success('ICS file created successfully!')
-                    st.download_button(
-                        label="Download ICS File",
-                        data=open(tmp_ics_path, 'rb').read(),
-                        file_name="shift_schedule.ics",
-                        mime="text/calendar"
-                    )
-                except ValueError as e:
-                    st.error(f"Error creating ICS file: {e}")
-        except Exception as e:
-            st.error(f"Error processing the uploaded file: {e}")
+                # Provide a download link
+                st.success('ICS file created successfully!')
+                st.download_button(
+                    label="Download ICS File",
+                    data=open(tmp_ics_path, 'rb').read(),
+                    file_name="shift_schedule.ics",
+                    mime="text/calendar"
+                )
+            except ValueError as e:
+                st.error(f"Error creating ICS file: {e}")
