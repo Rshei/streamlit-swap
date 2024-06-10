@@ -219,7 +219,7 @@ def extract_schedule_from_pdf(pdf_path):
 
             rest_indicator = parts[2] if len(parts) > 2 else None
 
-            if rest_indicator in ['Rest', 'COMP0']:
+            if rest_indicator in ['Rest', 'COMP0', 'VAC']:
                 schedule_data.append({
                     'day_abbr': day_abbr,
                     'date': date_str,
@@ -227,17 +227,13 @@ def extract_schedule_from_pdf(pdf_path):
                 })
             else:
                 shifts = ' '.join(parts[2:])
-                if '08:00 - 14:00' in shifts and '14:30 - 16:30' in shifts:
-                    consolidated_shift = '08:00 - 16:30'
-                elif '06:30 - 12:30' in shifts and '13:00 - 15:00' in shifts:
-                    consolidated_shift = '06:30 - 15:00'
-                elif '13:30 - 19:30' in shifts and '20:00 - 22:00' in shifts:
-                    consolidated_shift = '13:30 - 22:00'
-                elif '22:00 - 06:30' in shifts:
-                    consolidated_shift = '22:00 - 06:30'
+                time_parts = [part for part in shifts.split() if ':' in part]
+                if len(time_parts) >= 2:
+                    start_time = time_parts[0]
+                    end_time = time_parts[-1]
+                    consolidated_shift = f"{start_time} - {end_time}"
                 else:
-                    # Handle cases where shifts don't match the expected patterns
-                    consolidated_shift = consolidate_shift_times(shifts)
+                    consolidated_shift = "Invalid shift times"
                 
                 schedule_data.append({
                     'day_abbr': day_abbr,
@@ -256,7 +252,7 @@ def create_ics(schedule_data, month, year):
             day = int(item['date'])
             event_date = datetime(year, month, day)
 
-            if item['shift'] == 'Rest':
+            if item['shift'] in ['Rest', 'COMP0', 'VAC', 'Invalid shift times']:
                 continue
             else:
                 time_range = item['shift']
@@ -281,7 +277,6 @@ def create_ics(schedule_data, month, year):
 
     ics_content += "END:VCALENDAR\n"
     return ics_content
-
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
@@ -389,3 +384,4 @@ elif selected == "shifts to calendar":
                 )
             except ValueError as e:
                 st.error(f"Error creating ICS file: {e}")
+    
