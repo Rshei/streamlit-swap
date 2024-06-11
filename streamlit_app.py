@@ -241,6 +241,14 @@ def extract_schedule_from_pdf(pdf_path):
                     'shift': consolidated_shift
                 })
 
+                # Check for Resilience Session (HZ_RS)
+                if 'HZ_RS' in shifts:
+                    schedule_data.append({
+                        'day_abbr': day_abbr,
+                        'date': date_str,
+                        'shift': 'Resilience Session'
+                    })
+
     return schedule_data
 
 def create_ics(schedule_data, month, year):
@@ -254,11 +262,25 @@ def create_ics(schedule_data, month, year):
 
             if item['shift'] in ['Rest', 'COMP0', 'VAC', 'Invalid shift times']:
                 continue
+            elif item['shift'] == 'Resilience Session':
+                ics_event = (
+                    "BEGIN:VEVENT\n"
+                    f"DTSTART;VALUE=DATE:{event_date.strftime('%Y%m%d')}\n"
+                    f"SUMMARY:Resilience Session\n"
+                    "END:VEVENT\n"
+                )
+                ics_content += ics_event
             else:
                 time_range = item['shift']
                 start_time, end_time = time_range.split('-')
                 start_time = datetime.strptime(start_time.strip(), '%H:%M').strftime('%H%M%S')
-                end_time = datetime.strptime(end_time.strip(), '%H:%M').strftime('%H%M%S')
+                
+                if item.get('has_resilience_session', False):
+                    end_time_obj = item['start_time'] + timedelta(hours=8, minutes=30)
+                    end_time = end_time_obj.strftime('%H%M%S')
+                else:
+                    end_time_dt = datetime.strptime(end_time.strip(), '%H:%M')
+                    end_time = end_time_dt.strftime('%H%M%S')
 
                 dtstart = f"{event_date.strftime('%Y%m%d')}T{start_time}"
                 dtend = f"{event_date.strftime('%Y%m%d')}T{end_time}"
@@ -277,6 +299,7 @@ def create_ics(schedule_data, month, year):
 
     ics_content += "END:VCALENDAR\n"
     return ics_content
+    
 # Handle shift-related actions
 if selected == "Insert Shifts":
     selected_month = st.selectbox("Select the month:", options=range(1, 13))
@@ -352,7 +375,7 @@ elif selected == "shifts to calendar":
     st.title('Shift Schedule PDF to ICS Converter')
 
     uploaded_file = st.file_uploader("Upload PDF File", type="pdf")
-    
+
     if uploaded_file is not None:
         # Save uploaded file to a temporary location
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
@@ -384,4 +407,4 @@ elif selected == "shifts to calendar":
                 )
             except ValueError as e:
                 st.error(f"Error creating ICS file: {e}")
-    
+        
